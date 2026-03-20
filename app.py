@@ -1,10 +1,14 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import io
 import math
+
+try:
+    import plotly.graph_objects as go
+    PLOTLY_OK = True
+except ImportError:
+    PLOTLY_OK = False
+
 
 # ─────────────────────────────────────────────
 # PAGE CONFIG
@@ -356,6 +360,8 @@ COLORS_3D = [
 ]
 
 def build_3d_figure(shapes_list):
+    if not PLOTLY_OK:
+        return None
     fig = go.Figure()
     has_trace = False
     all_pts = []
@@ -607,8 +613,11 @@ with left_col:
 
 with right_col:
     st.markdown('<div class="section-title">🔬 3D Görselleştirme</div>', unsafe_allow_html=True)
-    fig3d = build_3d_figure(shapes)
-    st.plotly_chart(fig3d, use_container_width=True, config={"displayModeBar": False})
+    if PLOTLY_OK:
+        fig3d = build_3d_figure(shapes)
+        st.plotly_chart(fig3d, use_container_width=True, config={"displayModeBar": False})
+    else:
+        st.info("3D görselleştirme için plotly paketi gereklidir.")
 
 # ─────────────────────────────────────────────
 # RESULTS TABLE
@@ -646,7 +655,7 @@ if shapes:
     st.dataframe(df, use_container_width=True, hide_index=True)
 
     # Pie chart
-    if len(shapes) > 1:
+    if len(shapes) > 1 and PLOTLY_OK:
         st.markdown('<div class="section-title">🥧 Hacim Dağılımı</div>', unsafe_allow_html=True)
         fig_pie = go.Figure(go.Pie(
             labels=[s["name"] for s in shapes],
@@ -668,6 +677,12 @@ if shapes:
                               showarrow=False)]
         )
         st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
+    elif len(shapes) > 1:
+        st.markdown('<div class="section-title">🥧 Hacim Dağılımı</div>', unsafe_allow_html=True)
+        for s in shapes:
+            pct = s["volume_m3"] / total_vol * 100 if total_vol > 0 else 0
+            st.markdown(f"**{s['name']}**: {s['volume_m3']:,.4f} m³ ({pct:.1f}%)")
+            st.progress(pct / 100)
 
     # CSV Export
     st.markdown('<div class="section-title">💾 Dışa Aktar</div>', unsafe_allow_html=True)
